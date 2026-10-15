@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+ignite:
+  address: 127.0.0.1:10800
+
+s3:
+  endpoint: http://localhost:8333
+  access-key: admin
+  secret-key: admin12345
+  bucket: dev
+  prefix: db/common/batchconfig/person/
+  clean-before-export: false   # delete old part files under the prefix before each export
+
+export:
+  sql: "SELECT ID, NAME, AMOUNT FROM PUBLIC.PERSON"
+  rows-per-file: 100000

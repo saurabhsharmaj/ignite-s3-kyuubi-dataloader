@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.2.5</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>com.example</groupId>
+  <artifactId>ignite-parquet-export</artifactId>
+  <version>1.0.0</version>
+  <name>ignite-parquet-export</name>
+
+  <properties>
+    <java.version>17</java.version>
+    <ignite.version>3.1.0</ignite.version>
+    <parquet.version>1.13.1</parquet.version>
+    <hadoop.version>3.3.6</hadoop.version>
+    <awssdk.version>2.25.0</awssdk.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <!-- Ignite thin client (ignite-core contains it) -->
+    <dependency>
+      <groupId>org.apache.ignite</groupId>
+      <artifactId>ignite-client</artifactId>
+      <version>${ignite.version}</version>
+    </dependency>
+    <!-- Parquet + Avro -->
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-avro</artifactId>
+      <version>${parquet.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>${parquet.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-avro</artifactId>
+      <version>${parquet.version}</version>
+    </dependency>
+
+    <!-- Shaded Hadoop jars: avoids dependency conflicts with Spring Boot -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client-api</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client-runtime</artifactId>
+      <version>${hadoop.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- S3 client (talks to MinIO) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>${awssdk.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <!-- Used by: mvn spring-boot:run  (Ignite needs these on Java 17) -->
+          <jvmArguments>
+            --add-opens=java.base/jdk.internal.access=ALL-UNNAMED
+            --add-opens=java.base/jdk.internal.misc=ALL-UNNAMED
+            --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+            --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+            --add-opens=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED
+            --add-opens=jdk.internal.jvmstat/sun.jvmstat.monitor=ALL-UNNAMED
+            --add-opens=java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED
+            --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED
+            --add-opens=java.base/java.io=ALL-UNNAMED
+            --add-opens=java.base/java.nio=ALL-UNNAMED
+            --add-opens=java.base/java.net=ALL-UNNAMED
+            --add-opens=java.base/java.util=ALL-UNNAMED
+            --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+            --add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED
+            --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+            --add-opens=java.base/java.lang=ALL-UNNAMED
+            --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+            --add-opens=java.base/java.math=ALL-UNNAMED
+            --add-opens=java.sql/java.sql=ALL-UNNAMED
+            --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+            --add-opens=java.base/java.time=ALL-UNNAMED
+            --add-opens=java.base/java.text=ALL-UNNAMED
+            --add-opens=java.management/sun.management=ALL-UNNAMED
+            --add-opens=java.desktop/java.awt.font=ALL-UNNAMED
+            --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED
+            --add-exports=java.base/sun.nio.ch=ALL-UNNAMED
+            --add-exports=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED
+            --add-exports=jdk.internal.jvmstat/sun.jvmstat.monitor=ALL-UNNAMED
+            --add-exports=java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED
+            -Djava.net.preferIPv4Stack=true
+          </jvmArguments>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

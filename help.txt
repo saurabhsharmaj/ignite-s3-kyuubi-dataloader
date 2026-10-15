@@ -1,0 +1,216 @@
+# Apache Ignite + S3 + Hadoop/Hive + Kyuubi Integration POC
+
+## 1. Objective
+
+This POC demonstrates how to:
+
+- Start Apache Ignite.
+- Start the S3-compatible object storage service.
+- Start Hadoop/Hive with S3A connectivity.
+- Connect Ignite and Kyuubi to the required services.
+- Create Hive tables using Kyuubi.
+- Seed and export data through Spring Boot APIs.
+- Validate exported data using SQL queries.
+
+## 2. Startup Sequence
+
+Start the services in the following order:
+
+1. **Apache Ignite** — start the Ignite server or cluster.
+2. **S3-compatible storage** — start the object storage service and verify that the `dev` bucket exists.
+3. **Hadoop/Hive with S3** — configure S3A access and verify that Hive can access the bucket.
+4. **Ignite and Kyuubi connectivity** — verify Ignite connectivity and start Kyuubi with the required Hive configuration.
+5. **Create tables** — connect to Kyuubi using Beeline or your SQL client.
+6. **Seed/export data** — invoke the Spring Boot API endpoints.
+7. **Validate data** — run SQL queries to verify the records and row counts.
+
+> Note: Start dependencies before the services that use them. The exact commands depend on the configuration of your local installation.
+
+## 3. Connect to Kyuubi
+
+Use Beeline or a compatible SQL client to connect to the Kyuubi JDBC endpoint.
+
+Example:
+
+```bash
+beeline -u jdbc:hive2://localhost:10000
+```
+
+If Kyuubi is configured on a different host or port, replace the JDBC URL accordingly.
+
+## 4. Create the `users` External Table
+
+Run the following SQL in the Kyuubi session:
+
+```sql
+CREATE EXTERNAL TABLE IF NOT EXISTS users (
+    id BIGINT,
+    created_at TIMESTAMP,
+    created_by STRING,
+    email_address STRING,
+    first_name STRING,
+    last_name STRING,
+    updated_at TIMESTAMP,
+    updated_by STRING
+)
+STORED AS PARQUET
+LOCATION 's3a://dev/db/common/batchconfig/';
+```
+
+This table points to an existing S3 location. Because it is an external table, dropping the Hive table does not normally delete the underlying data files.
+
+**Important:** The S3 directory must contain Parquet files compatible with the table schema for existing records to be read correctly.
+
+## 5. Create the `PERSON` Table
+
+```sql
+CREATE TABLE IF NOT EXISTS PERSON (
+    ID BIGINT,
+    NAME STRING,
+    AMOUNT DOUBLE
+)
+STORED AS PARQUET
+LOCATION 's3a://dev/db/common/batchconfig/person';
+```
+
+This table stores person records in Parquet format at the specified S3 location.
+
+Before reusing this location, ensure that it does not contain incompatible files from an earlier test.
+
+## 6. Seed Test Data Through SQL
+
+### Insert a record into PERSON
+
+```sql
+INSERT INTO PERSON
+VALUES (1, 'John Doe', 1250.50);
+```
+
+### Insert a record into users
+
+```sql
+INSERT INTO users VALUES (
+    1,
+    CAST('2026-10-15 10:00:00' AS TIMESTAMP),
+    'admin',
+    'john.doe@example.com',
+    'John',
+    'Doe',
+    CAST('2026-10-15 10:00:00' AS TIMESTAMP),
+    'admin'
+);
+```
+
+These statements provide sample data for validating the table definitions and S3 connectivity.
+
+**Note:** The `users` table uses an external location that might already contain data. If the same record is inserted repeatedly, duplicates may occur.
+
+## 7. Invoke the Spring Boot APIs
+
+Once Ignite, S3, Hive, and Kyuubi are running, start the Spring Boot application.
+
+Default example base URL:
+
+```text
+http://localhost:8080
+```
+
+Invoke the application's configured **SEED** endpoint first, followed by the **EXPORT** endpoint.
+
+Replace the example paths below with the actual mappings implemented in your application:
+
+```bash
+curl -X POST http://localhost:8080/api/seed
+curl -X POST http://localhost:8080/api/export
+```
+
+Verify the response from each endpoint before proceeding. These are illustrative paths; they will work only if your application exposes those exact mappings.
+
+## 8. Validate Data Using SQL
+
+### Check the test table
+
+```sql
+SELECT * FROM t;
+```
+
+### Validate PERSON
+
+```sql
+SELECT COUNT(*) FROM PUBLIC.PERSON;
+
+SELECT COUNT(*) FROM PERSON;
+
+SELECT * FROM PERSON;
+```
+
+### Validate users
+
+```sql
+SELECT COUNT(*) FROM users;
+
+SELECT * FROM users;
+
+SELECT * FROM users LIMIT 10;
+```
+
+### Expected results for fresh, isolated test data
+
+| Table | Expected rows | Expected record |
+|---|---:|---|
+| PERSON | 1 | `1, John Doe, 1250.50` |
+| users | 1 | `john.doe@example.com` |
+| t | Depends on setup | Depends on table definition and seed data |
+
+The expected counts above apply only when the tables and their storage locations are initially empty and the sample inserts execute successfully. Existing data or repeated inserts can change the counts.
+
+## 9. Troubleshooting Checklist
+
+### S3 connectivity
+
+- Confirm that the S3 service is running.
+- Confirm that the `dev` bucket exists.
+- Verify the endpoint, access key, secret key, and path-style access settings.
+- Confirm that Hadoop/Hive is configured with the correct S3A endpoint and credentials.
+
+### Hive/Kyuubi connectivity
+
+- Verify that the Kyuubi JDBC port is listening.
+- Confirm that the correct Hive configuration is loaded.
+- Check that the SQL session can create tables and read the configured S3 locations.
+
+### Ignite connectivity
+
+- Verify that the Ignite server is running.
+- Confirm that the configured Ignite client address and port are correct.
+- Test the Ignite connection independently before invoking the export API.
+
+### Data validation
+
+- Check the Spring Boot logs for seed/export errors.
+- Confirm that the API reports successful completion.
+- Verify the S3 output path and the generated Parquet files.
+- Check the table schema and S3 location.
+- Avoid mixing incompatible Parquet schemas in the same directory.
+
+## 10. End-to-End Execution Checklist
+
+- [ ] Ignite started successfully.
+- [ ] S3 service started and `dev` bucket verified.
+- [ ] Hadoop/Hive S3A connectivity verified.
+- [ ] Kyuubi started and JDBC connection verified.
+- [ ] `users` external table created.
+- [ ] `PERSON` table created.
+- [ ] Spring Boot application started.
+- [ ] SEED API executed successfully.
+- [ ] EXPORT API executed successfully.
+- [ ] `SELECT * FROM PERSON` validated.
+- [ ] `SELECT * FROM users` validated.
+- [ ] Row counts recorded and compared with expectations.
+
+## 11. Important Implementation Notes
+
+- Use the same S3 bucket and path conventions across Hadoop, Hive, Kyuubi, and the Spring Boot exporter.
+- Keep table schemas aligned with the Parquet data written by the exporter.
+- For repeatable tests, use isolated test paths or clear test data safely before rerunning.
+- Record service ports, configuration files, and the actual API endpoint mappings in the project README.
