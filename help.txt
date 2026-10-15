@@ -1,5 +1,5 @@
 # Apache Ignite + S3 + Hadoop/Hive + Kyuubi Integration POC
-
+#Connect WinSCP with S3.
 ## 1. Objective
 
 This POC demonstrates how to:
